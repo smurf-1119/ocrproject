@@ -18,8 +18,9 @@ def imshow(inp):
 class MDLSTMCell(nn.Module):
     def __init__(self, in_channels, out_channels):
         """
-        :param out_channels: Size of the embedding
-        :param entry_shape: Entry shape
+        params:
+           @in_channels{int}:  Size of the embedding.
+           @out_channels{int}: Size of the output.
         """
         super(MDLSTMCell, self).__init__()
         self.out_channels = out_channels
@@ -32,6 +33,7 @@ class MDLSTMCell(nn.Module):
         self.b = nn.parameter.Parameter(torch.zeros(bias_shape))
 
     def initialize_weights(self):
+        
         torch.nn.init.xavier_uniform_(self.w)
         torch.nn.init.xavier_uniform_(self.u0)
         torch.nn.init.xavier_uniform_(self.u1)
@@ -108,6 +110,7 @@ class MDLSTM(nn.Module):
         """
         # For each direction we're going to compute hidden_states and their activations
         global_hidden_states = len(self.params) * [None]
+        global_cell_states = len(self.params) * [None]
         streams = [torch.cuda.Stream() for _ in self.params] if cuda_available else []
         if cuda_available:
             torch.cuda.synchronize()
@@ -117,17 +120,18 @@ class MDLSTM(nn.Module):
             if cuda_available:
                 stream = streams[i]
                 with torch.cuda.stream(stream):
-                    hidden_states_direction = self.do_forward(x_ordered, lstm)
+                    hidden_states_direction, cell_states_direction = self.do_forward(x_ordered, lstm)
             else:
-                hidden_states_direction = self.do_forward(x_ordered, lstm)
+                hidden_states_direction, cell_states_direction = self.do_forward(x_ordered, lstm)
             global_hidden_states[i] = self.flipped_image(hidden_states_direction, direction=i)
+            global_cell_states[i] = self.flipped_image(cell_states_direction, direction=i)
         if cuda_available:
             torch.cuda.synchronize()
         # Each element in global_hidden_states is of shape (batch, channel, height, width)
         # Needs to be transposed because we stacked by direction while we expect the first dimension to be batch
         # return torch.stack(global_hidden_states, dim=1) # (batch, 4, channel, height, width) = stacked.shape
         # print(torch.mean(global_hidden_states, dim=1).shape)
-        return torch.mean(torch.stack(global_hidden_states, dim=1), dim = 1) # (batch, 4, channel, height, width) = stacked.shape
+        return torch.mean(torch.stack(global_hidden_states, dim=1), dim = 1), torch.mean(torch.stack(global_cell_states, dim=1), dim = 1) # (batch, 4, channel, height, width) = stacked.shape
 
     def do_forward(self, x, lstm):
         batch_size, in_channels, height, width = x.shape
@@ -162,4 +166,4 @@ class MDLSTM(nn.Module):
                 cs, hs = lstm(current_input, prev_0_c, prev_0_h, prev_1_c, prev_1_h)
                 cell_states_direction.append(cs)
                 hidden_states_direction.append(hs)
-        return self.fold(torch.stack(hidden_states_direction, dim=2))
+        return self.fold(torch.stack(hidden_states_direction, dim=2)), self.fold(torch.stack(cell_states_direction, dim=2))
