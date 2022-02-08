@@ -9,27 +9,26 @@ import torch
 
 PAD, BOS, EOS = '<pad>', '<bos>', '<eos>'
 
-def process_label(max_seq_len: int, vocab: dict, labels: list):
+def process_label(max_seq_len: int, vocab: dict, label: str):
     '''
     description: given vocab, map strings of labels to integers array.
     params:
         @max_seq_len{int}: the max length of label seqence;
         @vocab{dict}: the dictionary to map the strings to integers;
-        @labels{list}: (batch, )
+        @label{str}: 
     return:
         out_label{tensor}
     '''
     out_label = []
 
-    for label in labels:
-        label = [vocab[ch] for ch in label]
-        if len(label) + 1 > max_seq_len:
-        # if the length of label is longer than the max seqence length, we truncate it.
-            label[-1] = vocab[EOS]
-        else:
-            label += [vocab[EOS]] + [vocab[PAD]] * (max_seq_len - len(label) - 1)
+    label = [vocab[ch] for ch in label]
+    if len(label) + 1 > max_seq_len:
+    # if the length of label is longer than the max seqence length, we truncate it.
+        label[-1] = vocab[EOS]
+    else:
+        label += [vocab[EOS]] + [vocab[PAD]] * (max_seq_len - len(label) - 1)
 
-        out_label.append(label)
+    out_label.append(label)
     
     return torch.tensor(out_label)
 

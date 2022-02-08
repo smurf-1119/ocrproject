@@ -63,7 +63,7 @@ def main():
     # build vocab
     vocab = build_vocab('./dict.txt')
 
-    test_str = ['5*8=40']
+    test_str = '5*8=40'
 
     # construct the label
     label = process_label(max_seq, vocab, test_str)
