@@ -1,3 +1,7 @@
+'''
+mdlstm cell
+'''
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -74,7 +78,20 @@ class MDLSTMCell(nn.Module):
         return ct, ht
 
 class MDLSTM(nn.Module):
+    '''
+    description: given tensor(batch, channels, height, width), output the encoded feature->
+        output(batch,channels,height,width), 
+        states(num_layers, batch, channels, height, width),
+        cells(num_layers, batch, channels, height, width)
+    '''
     def __init__(self, height: int, width: int, in_channels: int, out_channels: int):
+        '''
+        param:
+            @height{int}:the height of input image;
+            @width{int}:the width of input image;
+            @in_channels{int}:the channels of input image;
+            @out_channels{int}: the channels of output image.
+        '''
         super(MDLSTM, self).__init__()
         self.out_channels = out_channels
         self.width = width
@@ -88,12 +105,14 @@ class MDLSTM(nn.Module):
         self.fold = torch.nn.Fold(output_size=(self.height, self.width), kernel_size=(1, 1))
 
     def initialize_weights(self):
+        # initial the params
         self.lstm_lr_tb.initialize_weights()
         self.lstm_rl_tb.initialize_weights()
         self.lstm_lr_bt.initialize_weights()
         self.lstm_rl_bt.initialize_weights()
 
     def flipped_image(self, x: torch.Tensor, direction: int):
+        # do flip operation to get 4 different directions 
         if direction == 0: # LRTP
             return x
         elif direction == 1: # RLTB
@@ -105,8 +124,12 @@ class MDLSTM(nn.Module):
 
     def forward(self, x: torch.Tensor):
         """
-        :param x: Tensor of size (batch_size, in_channels, height, width)
-        :return: Tensor of size (batch_size, 4, out_channels, height, width)
+        param 
+            @x: Tensor of size (batch_size, in_channels, height, width)
+        return: 
+            @output:Tensor of size (batch_size, out_channels, height, width);
+            @states:Tensor of size (num_layers, batch_size, out_channels, height, width);
+            @cells:Tensor of size (num_layers, batch_size, out_channels, height, width);
         """
         # For each direction we're going to compute hidden_states and their activations
         global_hidden_states = len(self.params) * [None]
@@ -114,9 +137,12 @@ class MDLSTM(nn.Module):
         streams = [torch.cuda.Stream() for _ in self.params] if cuda_available else []
         if cuda_available:
             torch.cuda.synchronize()
+        
+        # looping 4 direction 
         for i, lstm in enumerate(self.params):
             x_ordered = self.flipped_image(x, direction=i)
             #imshow(x_ordered[0])
+            # run code sychronizedly
             if cuda_available:
                 stream = streams[i]
                 with torch.cuda.stream(stream):
@@ -131,7 +157,7 @@ class MDLSTM(nn.Module):
         # Needs to be transposed because we stacked by direction while we expect the first dimension to be batch
         # return torch.stack(global_hidden_states, dim=1) # (batch, 4, channel, height, width) = stacked.shape
         # print(torch.mean(global_hidden_states, dim=1).shape)
-        return torch.mean(torch.stack(global_hidden_states, dim=1), dim = 1), torch.mean(torch.stack(global_cell_states, dim=1), dim = 1) # (batch, 4, channel, height, width) = stacked.shape
+        return torch.mean(torch.stack(global_hidden_states, dim=1), dim = 1), torch.mean(torch.stack(global_cell_states, dim=1), dim = 1)
 
     def do_forward(self, x, lstm):
         batch_size, in_channels, height, width = x.shape

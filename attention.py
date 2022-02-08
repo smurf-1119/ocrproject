@@ -1,3 +1,7 @@
+'''
+compute attention function
+'''
+
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -8,6 +12,9 @@ def attention_model(input_size, attention_size):
     params: 
         @input_size{int}:     the lenhth of the input tensor.
         @attention_size{int}: the length of the output tensor.
+
+    return:
+        model{nn.Sequential}
     '''
     model = nn.Sequential(nn.Linear(input_size, 
                                     attention_size, bias=False),
@@ -20,9 +27,12 @@ def attention_forward(model, enc_states, dec_state):
     description: implement the attention model.
     params:
         @model{function}: the attention model.
-        @enc_states: the output of the encoder's last layer.
-        @dec_state: the current hiddent state of the decoder's output. 
+        @enc_states{tensor}: (seq_len, batch, hidden_size) the output of the encoder's last layer.
+        @dec_state{tensor}: (batch, hidden_size)the current hiddent state of the decoder's output. 
+    return:
+        背景向量{tensor}:(batch, hidden_size)
     '''
+
     # 将解码器隐藏状态广播到和编码器隐藏状态形状相同后进行连结
     dec_states = dec_state.unsqueeze(dim=0).expand_as(enc_states)
     enc_and_dec_states = torch.cat((enc_states, dec_states), dim=2)

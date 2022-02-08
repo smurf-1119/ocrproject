@@ -1,3 +1,7 @@
+'''
+backbone network used to extract feature map
+'''
+
 from ast import iter_child_nodes
 from turtle import forward
 import torch

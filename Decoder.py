@@ -15,8 +15,11 @@ class Decoder(nn.Module):
     
     def forward(self, cur_input, state, enc_states):
         """
-        cur_input shape: (batch, )
-        state shape: (num_layers, batch, hiddens_size)
+        params:
+            @cur_input{tensor}: (batch, )
+            @state{tupple}: (tensor (num_layers, batch, hiddens_size), 
+                             tensor (num_layers, batch, hiddens_size))
+            @enc_states{tensor}: (seq_len, batch, hidden_size)
         """
         # 使用注意力机制计算背景向量
         c = attention_forward(self.attention, enc_states, state[0][-1])
