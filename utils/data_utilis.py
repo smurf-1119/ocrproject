@@ -23,7 +23,8 @@ def process_label(max_seq_len: int, vocab: dict, label: str):
     label = [vocab[ch] for ch in label]
     if len(label) + 1 > max_seq_len:
     # if the length of label is longer than the max seqence length, we truncate it.
-        label[-1] = vocab[EOS]
+        label = np.array(label)
+        label = (label[:max_seq_len-1]).tolist() + [vocab[EOS]]
     else:
         label += [vocab[EOS]] + [vocab[PAD]] * (max_seq_len - len(label) - 1)
 

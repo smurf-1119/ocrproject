@@ -63,18 +63,21 @@ def getDataLoader(mode,batch_size,max_sequence):
         iter = DataLoader(dataset,batch_size=batch_size,shuffle=True,num_workers= 4 if platform.system() == "linux" else 0,collate_fn=collate_fn)
     return iter
 
+def main():
+    trainLoader = getDataLoader('train',2,7)
+    for image,label in trainLoader:
+        print(image.size())
+        print(label)
+        break
+    # dataset = recognitionDataset('train',224)
+    # img = dataset[0][0]
+    # label = dataset[0][1]
+    # print(img.shape)
+    # print(label)
+    # plt.imshow(img)
+    # plt.show()
 
-trainLoader = getDataLoader('train',2,7)
-for image,label in trainLoader:
-    print(image.size())
-    print(label)
-    break
-# dataset = recognitionDataset('train',224)
-# img = dataset[0][0]
-# label = dataset[0][1]
-# print(img.shape)
-# print(label)
-# plt.imshow(img)
-# plt.show()
+if __name__ == "__main__":
+    main()
 
 
