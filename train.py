@@ -28,7 +28,7 @@ def set_interact_args():
 
     # 训练参数
     parser.add_argument('--lr', default=0.01, type=float, required=False, help='学习率')
-    parser.add_argument('--batch_size', default=10, type=int, required=False, help='batch')
+    parser.add_argument('--batch_size', default=2, type=int, required=False, help='batch')
     parser.add_argument('--num_epoch', default=5, type=int, required=False, help='epoch')
     parser.add_argument('--max_seq', default=35, type=int, required=False, help='最大标签长度')
     parser.add_argument('--opt', default='sgd', type=str, required=False, help='训练方式')
@@ -58,7 +58,7 @@ def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt,
     optimizer = torch.optim.Adam(model.parameters(), lr=lr) if opt == 'adam' else torch.optim.SGD(model.parameters(), lr=lr)
     if device == 'cuda':
         model.cuda()
-
+    model.train()
     data_iter = DataLoader(mode='train', batch_size=batch_size, max_sequence=max_seqence, vocab_path=vocab_path, img_path=img_path, label_path=label_path)
     for epoch in tqdm(range(num_epochs), total=num_epochs):
         l_sum = 0.0
@@ -76,6 +76,23 @@ def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt,
 
         if (epoch + 1) % 10 == 0:
             print("epoch %d, loss %.3f" % (epoch + 1, l_sum / len(data_iter)))
+
+def evaluate(model,DataLoader,device,max_sequence,batch_size,vocab_path,image_path,label_path):
+    model.eval()
+    model.cuda()
+    valDataloader = DataLoader(mode='validation',batch_size=batch_size,max_sequence=max_sequence,vocab_path=vocab_path,img_path=image_path,label_path=label_path)
+    for X,Y in tqdm(valDataloader,total=len(valDataloader)):
+        if device == 'cuda':
+            X = X.to(torch.device(device=device))
+            Y = Y.to(torch.device(device=device))
+        with torch.no_grad():
+            output = model(X,Y,mode='validation')
+            break
+
+
+
+
+
 
 
 def main():
@@ -117,7 +134,8 @@ def main():
     model = ANMT(height, width, feature_size, embed_size, hidden_size, attention_size, vocab, device=device)
 
     # train
-    train(model=model, DataLoader=getDataLoader, max_seqence=max_seq, lr=lr, batch_size=batch_size, num_epochs=num_epochs, loss=loss, opt=opt, device=device, vocab_path=vocab_path, img_path=img_path, label_path=label_path)
-
+    # train(model=model, DataLoader=getDataLoader, max_seqence=max_seq, lr=lr, batch_size=batch_size, num_epochs=num_epochs, loss=loss, opt=opt, device=device, vocab_path=vocab_path, img_path=img_path, label_path=label_path)
+    #evaluate
+    evaluate(model=model,DataLoader=getDataLoader,device=device,max_sequence=max_seq,batch_size=batch_size,vocab_path=vocab_path,image_path=img_path,label_path=label_path)
 if __name__ == '__main__':
     main()
