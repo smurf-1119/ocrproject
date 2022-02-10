@@ -44,18 +44,23 @@ class ANMT(nn.Module):
         dec_state = self.Decoder.begin_state((enc_state[:].contiguous(), enc_cell[:].contiguous()))
         
         dec_input = torch.tensor([self.vocab[BOS]] * enc_output.shape[1], device=self.device)
-        mask, num_not_pad_tokens = torch.ones((batch_size,), device=self.device), 0
-        l = torch.tensor([0.0], device=self.device)
-        
-        for y in Y.permute(1, 0):# Y shape: (batch, seq_len)
-            dec_output, dec_state = self.Decoder(dec_input, dec_state, enc_output)
-            l = l + (mask * loss(dec_output, y)).sum()
-            dec_input = y # 使用强制教学
-            num_not_pad_tokens += mask.sum().item()
-            # EOS后面全是PAD. 下面一行保证一旦遇到EOS接下来的循环中mask就一直是0
-            mask = mask * (y != self.vocab[EOS]).float()
-        # return dec_output
-        return l / num_not_pad_tokens
+        if mode == 'train':
+            mask, num_not_pad_tokens = torch.ones((batch_size,), device=self.device), 0
+            l = torch.tensor([0.0], device=self.device)
+            
+            for y in Y.permute(1, 0):# Y shape: (batch, seq_len)
+                dec_output, dec_state = self.Decoder(dec_input, dec_state, enc_output)
+                l = l + (mask * loss(dec_output, y)).sum()
+                dec_input = y # 使用强制教学
+                num_not_pad_tokens += mask.sum().item()
+                # EOS后面全是PAD. 下面一行保证一旦遇到EOS接下来的循环中mask就一直是0
+                mask = mask * (y != self.vocab[EOS]).float()
+            # return dec_output
+            return l / num_not_pad_tokens
+        else:
+            for y in Y.permute(1,0):
+                dec_output, dec_state = self.Decoder(dec_input, dec_state, enc_output)
+
 
 
 
