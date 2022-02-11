@@ -2,6 +2,7 @@
 recognition model
 '''
 
+from numpy import indices
 from zmq import device
 from utils.data_utilis import process_label, build_vocab
 from Encoder import Encoder
@@ -58,12 +59,17 @@ class ANMT(nn.Module):
             # return dec_output
             return l / num_not_pad_tokens
         else:
+            mask, num_not_pad_tokens = torch.ones((batch_size,), device=self.device), 0
+            correct = torch.tensor([0.0],device=self.device)
             for y in Y.permute(1,0):
                 dec_output, dec_state = self.Decoder(dec_input, dec_state, enc_output)
-
-
-
-
+                pred,index = torch.max(dec_output,dim=1) #取最大值的位置
+                correct = correct+ (mask*(index==y)).sum()
+                dec_input = index
+                num_not_pad_tokens +=mask.sum().item()
+                mask = mask * (y != self.vocab[EOS]).float()
+            return correct/num_not_pad_tokens
+                
 def main():
     # params
     embed_size = 20
