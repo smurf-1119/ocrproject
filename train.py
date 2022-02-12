@@ -37,7 +37,7 @@ def set_interact_args():
     
     return parser.parse_args()
 
-def train(model, DataLoader, max_seqence, lr, batch_size, epoch, loss, opt, device, vocab_path='./dict.txt', img_path = './AEC_recognition/train/img', label_path='./AEC_recognition/train/labels.json'):
+def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt, device, vocab_path='./dict.txt', img_path = './AEC_recognition/train/img', label_path='./AEC_recognition/train/labels.json'):
     '''
     description: train model
     params:
@@ -61,26 +61,42 @@ def train(model, DataLoader, max_seqence, lr, batch_size, epoch, loss, opt, devi
         model.cuda()
     model.train()
     data_iter = DataLoader(mode='train', batch_size=batch_size, max_sequence=max_seqence, vocab_path=vocab_path, img_path=img_path, label_path=label_path)
-    l_sum = 0.0
-    for X, Y in tqdm(data_iter, total=len(data_iter)):
+    for epoch in tqdm(range(num_epochs), total=num_epochs):
+        l_sum = 0.0
+        for X, Y in tqdm(data_iter, total=len(data_iter)):
 
-        if device == 'cuda':
-            X = X.to(torch.device(device=device))
-            Y = Y.to(torch.device(device=device))
+            if device == 'cuda':
+                X = X.to(torch.device(device=device))
+                Y = Y.to(torch.device(device=device))
 
-        optimizer.zero_grad()
-        l = model(X, Y, mode='train', loss=loss)
-        l.backward()
-        optimizer.step()
-        l_sum += l.item()
+            optimizer.zero_grad()
+            l = model(X, Y, mode='train', loss=loss)
+            l.backward()
+            optimizer.step()
+            l_sum += l.item()
 
-    if (epoch + 1) % 10 == 0:
-        print("epoch %d, loss %.3f" % (epoch + 1, l_sum / len(data_iter)))
+        if (epoch + 1) % 10 == 0:
+            print("epoch %d, loss %.3f" % (epoch + 1, l_sum / len(data_iter)))
 
 
 def evaluate(model,DataLoader,device,max_sequence,batch_size,vocab_path,image_path,label_path):
+    '''
+    description: make the evaluation of the model
+    params:
+        @model{torch.nn.module}: defaut ANMT;
+        @DataLoader{torch.nn.DataLoader}: getDataloader;
+        @max_seqence{int}: the max length of label;
+        @batch_size{int}: batch;
+        @device{torch.device}: cuda or cpu;
+        @vocab_path{str};
+        @img_path{str};
+        @label_path{str}.
+    return:
+        None
+    '''  
     model.eval()
-    model.cuda()
+    if device == 'cuda':
+        model.cuda()
     accuracy_list = []
     valDataloader = DataLoader(mode='validation',batch_size=batch_size,max_sequence=max_sequence,vocab_path=vocab_path,img_path=image_path,label_path=label_path)
     for X,Y in tqdm(valDataloader,total=len(valDataloader)):
@@ -116,7 +132,7 @@ def main():
     device = args.device
     loss = nn.CrossEntropyLoss(reduction='none')
 
-    mode = args.mode # train or test
+    mode = args.mode # train or validation
 
     # data path
     vocab_path = args.vocab_path
@@ -130,9 +146,10 @@ def main():
     # construct the model  
     model = ANMT(height, width, feature_size, embed_size, hidden_size, attention_size, vocab,device=device)
 
-    for epoch in tqdm(range(num_epochs), total=num_epochs):
+    if mode == 'train':
         # train
-        train(model=model, DataLoader=getDataLoader, max_seqence=max_seq, lr=lr, batch_size=batch_size,epoch=epoch, loss=loss, opt=opt, device=device, vocab_path=vocab_path, img_path=img_path, label_path=label_path)
+        train(model=model, DataLoader=getDataLoader, max_seqence=max_seq, lr=lr, batch_size=batch_size,num_epochs=num_epochs, loss=loss, opt=opt, device=device, vocab_path=vocab_path, img_path=img_path, label_path=label_path)
+    else:
         # evaluate
         evaluate(model=model,DataLoader=getDataLoader,device=device,max_sequence=max_seq,batch_size=batch_size,vocab_path=vocab_path,image_path=img_path,label_path=label_path)
 if __name__ == '__main__':
