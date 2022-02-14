@@ -34,10 +34,11 @@ def set_interact_args():
     parser.add_argument('--max_seq', default=35, type=int, required=False, help='最大标签长度')
     parser.add_argument('--opt', default='sgd', type=str, required=False, help='训练方式')
     parser.add_argument('--device', default='cuda', type=str, required=False, help='运行设备')
+    parser.add_argument('--model_path',default='./model',type=str,required=False,help='模型位置')
     
     return parser.parse_args()
 
-def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt, device, vocab_path='./dict.txt', img_path = './AEC_recognition/train/img', label_path='./AEC_recognition/train/labels.json'):
+def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt, device, vocab_path='./dict.txt',data_dir='./AEC_recognition',model_path='./model'):
     '''
     description: train model
     params:
@@ -51,8 +52,8 @@ def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt,
         @opt: adam or sgd;
         @device{torch.device}: cuda or cpu;
         @vocab_path{str};
-        @img_path{str};
-        @label_path{str}.
+        @data_dir{str};
+        @model_path{str}
     return
         None
     '''
@@ -60,7 +61,7 @@ def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt,
     if device == 'cuda':
         model.cuda()
     model.train()
-    data_iter = DataLoader(mode='train', batch_size=batch_size, max_sequence=max_seqence, vocab_path=vocab_path, img_path=img_path, label_path=label_path)
+    data_iter = DataLoader(mode='train', batch_size=batch_size, max_sequence=max_seqence, vocab_path=vocab_path,data_dir=data_dir)
     for epoch in tqdm(range(num_epochs), total=num_epochs):
         l_sum = 0.0
         for X, Y in tqdm(data_iter, total=len(data_iter)):
@@ -77,9 +78,12 @@ def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt,
 
         if (epoch + 1) % 10 == 0:
             print("epoch %d, loss %.3f" % (epoch + 1, l_sum / len(data_iter)))
-
-
-def evaluate(model,DataLoader,device,max_sequence,batch_size,vocab_path,image_path,label_path):
+        if (epoch + 1) % 100 == 0:
+            evaluate(model,DataLoader=getDataLoader,device=device,max_sequence=max_seqence,batch_size=batch_size,vocab_path=vocab_path,data_dir=data_dir)
+            model_name = f'recognition_{num_epochs}_{epoch}'
+            torch.save(model.state_dict(),os.path.join(model_path,model_name))
+            
+def evaluate(model,DataLoader,device,max_sequence,batch_size,vocab_path,data_dir):
     '''
     description: make the evaluation of the model
     params:
@@ -89,8 +93,8 @@ def evaluate(model,DataLoader,device,max_sequence,batch_size,vocab_path,image_pa
         @batch_size{int}: batch;
         @device{torch.device}: cuda or cpu;
         @vocab_path{str};
-        @img_path{str};
-        @label_path{str}.
+        @data_dir{str};
+        @model_path{str}
     return:
         None
     '''  
@@ -98,7 +102,7 @@ def evaluate(model,DataLoader,device,max_sequence,batch_size,vocab_path,image_pa
     if device == 'cuda':
         model.cuda()
     accuracy_list = []
-    valDataloader = DataLoader(mode='validation',batch_size=batch_size,max_sequence=max_sequence,vocab_path=vocab_path,img_path=image_path,label_path=label_path)
+    valDataloader = DataLoader(mode='validation',batch_size=batch_size,max_sequence=max_sequence,vocab_path=vocab_path,data_dir=data_dir)
     for X,Y in tqdm(valDataloader,total=len(valDataloader)):
         if device == 'cuda':
             X = X.to(torch.device(device=device))
@@ -137,8 +141,6 @@ def main():
     # data path
     vocab_path = args.vocab_path
     data_dir = args.data_dir
-    img_path = os.path.join(data_dir, mode, 'img')
-    label_path = os.path.join(data_dir, mode, 'labels.json')
 
     # build vocab
     vocab = build_vocab(vocab_path)
@@ -146,11 +148,11 @@ def main():
     # construct the model  
     model = ANMT(height, width, feature_size, embed_size, hidden_size, attention_size, vocab,device=device)
 
-    if mode == 'train':
-        # train
-        train(model=model, DataLoader=getDataLoader, max_seqence=max_seq, lr=lr, batch_size=batch_size,num_epochs=num_epochs, loss=loss, opt=opt, device=device, vocab_path=vocab_path, img_path=img_path, label_path=label_path)
-    else:
-        # evaluate
-        evaluate(model=model,DataLoader=getDataLoader,device=device,max_sequence=max_seq,batch_size=batch_size,vocab_path=vocab_path,image_path=img_path,label_path=label_path)
+    #the model save path
+    model_path = args.model_path
+
+    # train
+    train(model=model, DataLoader=getDataLoader, max_seqence=max_seq, lr=lr, batch_size=batch_size,num_epochs=num_epochs, loss=loss, opt=opt, device=device, vocab_path=vocab_path,data_dir=data_dir,model_path=model_path)
+        
 if __name__ == '__main__':
     main()
