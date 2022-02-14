@@ -82,6 +82,7 @@ def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt,
             evaluate(model,DataLoader=getDataLoader,device=device,max_sequence=max_seqence,batch_size=batch_size,vocab_path=vocab_path,data_dir=data_dir)
             model_name = f'recognition_{num_epochs}_{epoch}'
             torch.save(model.state_dict(),os.path.join(model_path,model_name))
+            model.train()
             
 def evaluate(model,DataLoader,device,max_sequence,batch_size,vocab_path,data_dir):
     '''
