@@ -12,22 +12,19 @@ import platform
 import matplotlib.pyplot as plt
 
 class recognitionDataset(Dataset):
-    def __init__(self, mode, input_dim, max_sequence, vocab_path, img_path, label_path) -> None:
+    def __init__(self, mode, input_dim, max_sequence, vocab_path,data_dir) -> None:
         super(recognitionDataset,self).__init__()
+        self.mode = mode
         self.max_sequence = max_sequence
         self.input_dim = input_dim
         self.vocab_path = vocab_path
-        self.vocab = build_vocab(self.vocab_path)
-        if mode == 'train':
-            self.img_base_file = img_path
-            label_file = label_path
-            with open(label_file,'r') as f:
-                self.labels = json.load(f)['labels']
-        elif mode =='validation':
-            self.img_base_file = img_path
-            label_file = label_path
-            with open(label_file,'r') as f:
-                self.labels = json.load(f)['labels']
+        self.vocab  = build_vocab(self.vocab_path)
+        img_path = os.path.join(data_dir, self.mode, 'img')
+        label_path = os.path.join(data_dir, self.mode, 'labels.json')
+        self.img_base_file = img_path
+        label_file = label_path
+        with open(label_file,'r') as f:
+            self.labels = json.load(f)['labels']
     def __getitem__(self, index):
         data = self.labels[index]
         image_path = data['image_path']
@@ -53,7 +50,7 @@ def collate_fn(batch):
 
 
 
-def getDataLoader(mode,batch_size,max_sequence, vocab_path='./dict.txt', img_path = './AEC_recognition/train/img', label_path='./AEC_recognition/train/labels.json'):
+def getDataLoader(mode,batch_size,max_sequence, vocab_path='./dict.txt',data_dir='./AEC_recognition'):
     """"
     descriptions:generate the dataloader for the following operations
     params:
@@ -69,7 +66,7 @@ def getDataLoader(mode,batch_size,max_sequence, vocab_path='./dict.txt', img_pat
         "train":'./AEC_recognition/train/labels.json'
         "validation":'./AEC_recognition/validation/labels.json'
     """
-    dataset = recognitionDataset(mode,224,max_sequence, vocab_path, img_path, label_path)
+    dataset = recognitionDataset(mode,224,max_sequence, vocab_path,data_dir)
     if mode == 'test':
         iter = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers= 4 if platform.system() == "linux" else 0, collate_fn=collate_fn)
     else:
