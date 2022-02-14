@@ -148,6 +148,7 @@ def main():
 
     # construct the model  
     model = ANMT(height, width, feature_size, embed_size, hidden_size, attention_size, vocab,device=device)
+    # print(list(model.parameters()))
 
     #the model save path
     model_path = args.model_path

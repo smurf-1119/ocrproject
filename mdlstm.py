@@ -104,6 +104,8 @@ class MDLSTM(nn.Module):
         self.params = [self.lstm_lr_tb, self.lstm_rl_tb, self.lstm_lr_bt, self.lstm_rl_bt]
         self.fold = torch.nn.Fold(output_size=(self.height, self.width), kernel_size=(1, 1))
 
+        self.initialize_weights()
+
     def initialize_weights(self):
         # initial the params
         self.lstm_lr_tb.initialize_weights()

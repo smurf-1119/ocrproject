@@ -2,6 +2,7 @@
 recognition model
 '''
 
+from contextvars import Context
 from numpy import indices
 from zmq import device
 from utils.data_utilis import process_label, build_vocab
@@ -58,7 +59,7 @@ class ANMT(nn.Module):
                 mask = mask * (y != self.vocab[EOS]).float()
             # return dec_output
             return l / num_not_pad_tokens
-        elif mode == 'validation':
+        else:
             mask, num_not_pad_tokens = torch.ones((batch_size,), device=self.device), 0
             correct = torch.tensor([0.0],device=self.device)
             for y in Y.permute(1,0):
@@ -69,8 +70,6 @@ class ANMT(nn.Module):
                 num_not_pad_tokens +=mask.sum().item()
                 mask = mask * (y != self.vocab[EOS]).float()
             return correct/num_not_pad_tokens
-        else:
-            pass
                 
 def main():
     # params
