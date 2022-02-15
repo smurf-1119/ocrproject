@@ -37,6 +37,16 @@ def attention_forward(model, enc_states, dec_state):
     dec_states = dec_state.unsqueeze(dim=0).expand_as(enc_states)
     enc_and_dec_states = torch.cat((enc_states, dec_states), dim=2)
     e = model(enc_and_dec_states)  # 形状为(时间步数, 批量大小, 1)
-    alpha = F.softmax(e, dim=0)  # 在时间步维度做softmax运算
+    alpha = F.softmax(e, dim=0)  # 在时间步维度做softmax运算,alpha:(seq_len,batch,1)
+    mask = torch.ones_like(enc_states)
+    index = torch.nonzero(alpha>0.5)
+    if index.data != None:#还没想到怎么写
+        pass
     return (alpha * enc_states).sum(dim=0)  # 返回背景变量
 
+
+alpha = torch.ones((49,10,1))
+mask = torch.ones(49,10,256)
+enc_states = torch.ones((49,10,256))
+index = torch.nonzero(alpha>0.5)[:,:2]
+print(mask[index.size()])
