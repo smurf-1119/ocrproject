@@ -15,22 +15,23 @@ class Decoder(nn.Module):
                           num_layers=num_layers, dropout=drop_prob)
         self.out = nn.Linear(hidden_size, vocab_size)
     
-    def forward(self, cur_input, state, enc_states):
+    def forward(self, cur_input, state, enc_states, attention_mask):
         """
         params:
             @cur_input{tensor}: (batch, )
             @state{tupple}: (tensor (num_layers, batch, hiddens_size), 
                              tensor (num_layers, batch, hiddens_size))
             @enc_states{tensor}: (seq_len, batch, hidden_size)
+            @attention_mask{tensor}: (batch, seq_len)
         """
         # 使用注意力机制计算背景向量
-        c = attention_forward(self.attention, enc_states, state[0][-1])
+        c = attention_forward(self.attention, enc_states, state[0][-1], attention_mask)
         # embeding
         emb = self.embedding(cur_input)
         # calculate context gate
         c = self.context_gate(state[0][-1], emb, c) * c
         # 将嵌入后的输入和背景向量在特征维连结, (批量大小, num_hiddens+embed_size)
-        input_and_c = torch.cat((emb, c), dim=1)
+        input_and_c = torch.cat((emb, c), dim=1) 
         # 为输入和背景向量的连结增加时间步维，时间步个数为1
         output, state = self.lstm(input_and_c.unsqueeze(0), state)
         # 移除时间步维，输出形状为(批量大小, 输出词典大小)

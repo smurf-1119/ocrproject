@@ -17,6 +17,7 @@ class ANMT(nn.Module):
         self.vocab_size = len(vocab)
         self.vocab = vocab
         self.backbone = resnet50()
+        self.en_seq_len = height * width #the lenth of encoder states
         self.Encoder = Encoder(height, width, input_channel, hidden_size, num_layers, non_linear)
         self.Decoder = Decoder(self.vocab_size, embed_size, hidden_size, attention_size, num_layers, drop_prob)
         self.device = torch.device(device) 
@@ -45,12 +46,14 @@ class ANMT(nn.Module):
         dec_state = self.Decoder.begin_state((enc_state[:].contiguous(), enc_cell[:].contiguous()))
         
         dec_input = torch.tensor([self.vocab[BOS]] * enc_output.shape[1], device=self.device)
+
+        attention_mask = torch.ones(self.en_seq_len, batch_size, 1, device=self.device,requires_grad=False)
         if mode == 'train':
             mask, num_not_pad_tokens = torch.ones((batch_size,), device=self.device), 0
             l = torch.tensor([0.0], device=self.device)
             
             for y in Y.permute(1, 0):# Y shape: (batch, seq_len)
-                dec_output, dec_state = self.Decoder(dec_input, dec_state, enc_output)
+                dec_output, dec_state = self.Decoder(dec_input, dec_state, enc_output, attention_mask)
                 l = l + (mask * loss(dec_output, y)).sum()
                 dec_input = y # 使用强制教学
                 num_not_pad_tokens += mask.sum().item()
@@ -62,7 +65,7 @@ class ANMT(nn.Module):
             mask, num_not_pad_tokens = torch.ones((batch_size,), device=self.device), 0
             correct = torch.tensor([0.0],device=self.device)
             for y in Y.permute(1,0):
-                dec_output, dec_state = self.Decoder(dec_input, dec_state, enc_output)
+                dec_output, dec_state = self.Decoder(dec_input, dec_state, enc_output, attention_mask)
                 pred,index = torch.max(dec_output,dim=1) #取最大值的位置
                 correct = correct+ (mask*(index==y)).sum()
                 dec_input = index
