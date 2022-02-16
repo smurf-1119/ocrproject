@@ -42,7 +42,7 @@ def attention_forward(model, enc_states, dec_state, attention_mask):
 
     alpha = alpha * attention_mask
     c = (alpha * enc_states).sum(dim=0)
-    attention_mask = attention_mask * (alpha<=0.5)
+    attention_mask = attention_mask * (alpha<=0.5).float()
 
     return c  # 返回背景变量
 
