@@ -37,11 +37,13 @@ class recognitionDataset(Dataset):
         return len(self.labels) 
 
 def collate_fn(batch):
+    write = 0
     images = None
     labels = []
     for img, label in batch:
-        if images == None:
+        if write == 0:
             images = img
+            write += 1
         else:
             images = torch.cat([images, img], 0)
         labels.append(label)
