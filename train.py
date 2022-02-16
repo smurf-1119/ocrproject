@@ -5,7 +5,7 @@ train code
 from zmq import device
 from ANMT import ANMT
 from recognitiondataset import getDataLoader
-from utils.data_utilis import build_vocab
+from utils.data_utilis import build_vocab,adjustLr
 import torch
 from torch import nn
 from tqdm import tqdm
@@ -58,10 +58,13 @@ def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt,
         None
     '''
     optimizer = torch.optim.Adam(model.parameters(), lr=lr) if opt == 'adam' else torch.optim.SGD(model.parameters(), lr=lr)
+
     if device == 'cuda':
         model.cuda()
     model.train()
     data_iter = DataLoader(mode='train', batch_size=batch_size, max_sequence=max_seqence, vocab_path=vocab_path,data_dir=data_dir)
+    iteration = 0
+    new_iteration = 0   
     for epoch in tqdm(range(num_epochs), total=num_epochs):
         l_sum = 0.0
         for X, Y in tqdm(data_iter, total=len(data_iter)):
@@ -75,7 +78,15 @@ def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt,
             l.backward()
             optimizer.step()
             l_sum += l.item()
-
+            if iteration < 300000:
+                iteration += 1
+            else:
+                new_iteration += 1
+        if iteration == 300000: #300k先降低
+            optimizer = adjustLr(optimizer)
+        if new_iteration == 100000: #每100k之后再降低
+            optimizer = adjustLr(optimizer)
+            new_iteration = 0
         if (epoch + 1) % 10 == 0:
             print("epoch %d, loss %.3f" % (epoch + 1, l_sum / len(data_iter)))
         if (epoch + 1) % 100 == 0:

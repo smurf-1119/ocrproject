@@ -40,7 +40,6 @@ def build_vocab(dict_name: str):
     dic = [PAD, BOS, EOS] + dic
 
     vocab = {key:value for value, key in enumerate(dic)}
-
     return vocab
 
 def letterbox_image(img, inp_dim:int):
@@ -65,3 +64,9 @@ def prep_image(img, inp_dim):
     img = torch.from_numpy(img).float().div(255.0).unsqueeze(0)
     return img
 
+def adjustLr(optimizer):
+    current_lr = optimizer.param_groups[0]['lr']
+    lr = current_lr * 0.5
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+    return optimizer
