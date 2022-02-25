@@ -293,9 +293,12 @@ def resnet50(pretrained: bool = False,pretrained_path=None) -> ResNet:
     """
     return _resnet(Bottleneck, [3, 4, 6, 3], pretrained,pretrained_path)
 
+def main():
+    pretrained_path = "./resnet50_new.pth"
+    model = resnet50(pretrained=False,pretrained_path=pretrained_path)
+    input_images = torch.zeros((1,3,224,224))
+    out = model(input_images)
+    print(out.size())
 
-pretrained_path = "./resnet50_new.pth"
-model = resnet50(pretrained=False,pretrained_path=pretrained_path)
-input_images = torch.zeros((1,3,224,224))
-out = model(input_images)
-print(out.size())
+if __name__ == '__main__':
+    main()

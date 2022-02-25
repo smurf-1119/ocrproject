@@ -3,7 +3,6 @@ recognition model
 '''
 
 from numpy import indices
-from zmq import device
 from utils.data_utilis import process_label, build_vocab
 from Encoder import Encoder
 from Decoder import Decoder

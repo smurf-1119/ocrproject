@@ -4,7 +4,6 @@ calculate context gate
 import imp
 import torch
 from torch import nn
-from zmq import device
 
 class context_gate(nn.Module):
     def __init__(self, embed_size: int, hidden_size: int) -> None:
