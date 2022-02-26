@@ -35,7 +35,8 @@ def set_interact_args():
     parser.add_argument('--opt', default='sgd', type=str, required=False, help='训练方式')
     parser.add_argument('--device', default='cuda', type=str, required=False, help='运行设备')
     parser.add_argument('--model_path',default='./model',type=str,required=False,help='模型位置')
-    
+    parser.add_argument('--multi_gpu',default='True',type=str,required=False,help='多gpu训练')
+    parser.add_argument('--local_rank',type=int)
     return parser.parse_args()
 
 def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt, device, vocab_path='./dict.txt',data_dir='./AEC_recognition',model_path='./model'):
@@ -58,9 +59,6 @@ def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt,
         None
     '''
     optimizer = torch.optim.Adam(model.parameters(), lr=lr) if opt == 'adam' else torch.optim.SGD(model.parameters(), lr=lr)
-
-    if device == 'cuda':
-        model.cuda()
     model.train()
     data_iter = DataLoader(mode='train', batch_size=batch_size, max_sequence=max_seqence, vocab_path=vocab_path,data_dir=data_dir)
     iteration = 0
@@ -107,7 +105,7 @@ def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt,
             print("epoch %d, loss %.3f" % (epoch + 1, l_sum / len(data_iter)))
             pd.DataFrame(ls_list_epoch).to_csv('./loss_epoch.csv')
             sys.stdout.flush()
-        if (epoch + 1) % 10 == 0: #每10个epoch保存一次模型, 并测试一次
+        if (epoch + 1) % 30 == 0: #每30个epoch保存一次模型, 并测试一次
             acc = evaluate(model,DataLoader=getDataLoader,device=device,max_sequence=max_seqence,batch_size=batch_size,vocab_path=vocab_path,data_dir=data_dir)
             acc_list.append(acc)
             pd.DataFrame(acc_list).to_csv('./acc.csv')
@@ -132,10 +130,6 @@ def evaluate(model,DataLoader,device,max_sequence,batch_size,vocab_path,data_dir
         None
     '''  
     model.eval()
-
-    if device == 'cuda':
-        model.cuda()
-
     accuracy_list = []
     valDataloader = DataLoader(mode='validation',batch_size=batch_size,max_sequence=max_sequence,vocab_path=vocab_path,data_dir=data_dir)
 
@@ -175,6 +169,11 @@ def main():
     max_seq = args.max_seq
     opt = args.opt
     device = args.device
+
+    multi_gpu = args.multi_gpu
+    if multi_gpu:
+        os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2'
+
     loss = nn.CrossEntropyLoss(reduction='none')
 
     mode = args.mode # train or validation
@@ -190,6 +189,20 @@ def main():
     model = ANMT(height, width, feature_size, embed_size, hidden_size, attention_size, vocab,device=device)
     # print(list(model.parameters()))
 
+    if device == 'cuda':
+        if multi_gpu and torch.cuda.device_count() > 1:
+            # use multi gpu training
+            print("Let's use", torch.cuda.device_count(), "GPUs!")
+            torch.distributed.init_process_group(backend="nccl")
+            local_rank = torch.distributed.get_rank()
+            torch.cuda.set_device(local_rank)
+            device = torch.device("cuda", local_rank)
+            model.to(device)
+            model = torch.nn.parallel.DistributedDataParallel(model,device_ids=[local_rank],output_device=local_rank)
+        else:
+            device = torch.device("cuda")
+            model.to(device)
+        
     #the model save path
     model_path = args.model_path
 
