@@ -1,7 +1,6 @@
 '''
 calculate context gate
 '''
-import imp
 import torch
 from torch import nn
 

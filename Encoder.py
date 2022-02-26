@@ -1,8 +1,6 @@
 '''
 encode the feature map
 '''
-
-from turtle import forward
 from mdlstm import *
 import torch
 from torch import nn

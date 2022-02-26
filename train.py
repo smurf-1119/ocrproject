@@ -107,7 +107,7 @@ def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt,
             print("epoch %d, loss %.3f" % (epoch + 1, l_sum / len(data_iter)))
             pd.DataFrame(ls_list_epoch).to_csv('./loss_epoch.csv')
             sys.stdout.flush()
-        if (epoch + 1) % 10 == 0: #每10个epoch保存一次模型, 并测试一次
+        if (epoch + 1) % 30 == 0: #每30个epoch保存一次模型, 并测试一次
             acc = evaluate(model,DataLoader=getDataLoader,device=device,max_sequence=max_seqence,batch_size=batch_size,vocab_path=vocab_path,data_dir=data_dir)
             acc_list.append(acc)
             pd.DataFrame(acc_list).to_csv('./acc.csv')
