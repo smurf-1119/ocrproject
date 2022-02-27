@@ -179,6 +179,7 @@ def load_model(model,device,multi_gpu):
     return model
 
 
+
 def main():
     # train parameters
     args = set_interact_args() 
