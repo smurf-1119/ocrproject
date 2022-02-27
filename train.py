@@ -69,9 +69,9 @@ def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt,
     ls_list_iter = [] # loss list
     acc_list = [] # accuracy list
 
-    for epoch in tqdm(range(num_epochs), total=num_epochs):
+    for epoch in tqdm(range(num_epochs), total=num_epochs,position=0,ncols=80):
         l_sum = 0.0
-        for X, Y in tqdm(data_iter, total=len(data_iter)):
+        for X, Y in data_iter:
 
             if device == 'cuda':
                 X = X.to(torch.device(device=device))
@@ -219,18 +219,19 @@ def main():
 
     # construct the model  
     model = ANMT(height, width, feature_size, embed_size, hidden_size, attention_size, vocab,device=device)
+    
+    #the model save path
+    model_path = args.model_path
 
     model_name = args.model_name
-    if len(model_name) != 0:
+    if model_name != None:
         pretrain_path = os.path.join(model_path,model_name)
         loaded_dict = torch.load(pretrain_path)
         model = load_model(model,device,multi_gpu)       
         model.state_dict = loaded_dict
+        print('load success!')
     else:
         model = load_model(model,device,multi_gpu)
-
-    #the model save path
-    model_path = args.model_path
 
     # train
     train(model=model, DataLoader=getDataLoader, max_seqence=max_seq, lr=lr, batch_size=batch_size,num_epochs=num_epochs, loss=loss, opt=opt, device=device, vocab_path=vocab_path,data_dir=data_dir,model_path=model_path)
