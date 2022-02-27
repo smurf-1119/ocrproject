@@ -37,6 +37,7 @@ def set_interact_args():
     parser.add_argument('--model_path',default='./model',type=str,required=False,help='模型位置')
     parser.add_argument('--multi_gpu',default='True',type=str,required=False,help='多gpu训练')
     parser.add_argument('--local_rank',type=int)
+    parser.add_argument('--model_name',type=str,required=False,help='预模型名称')
     return parser.parse_args()
 
 def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt, device, vocab_path='./dict.txt',data_dir='./AEC_recognition',model_path='./model'):
@@ -110,7 +111,7 @@ def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt,
             acc_list.append(acc)
             pd.DataFrame(acc_list).to_csv('./acc.csv')
 
-            model_name = f'recognition_{num_epochs}_{epoch}'
+            model_name = f'recognition_{num_epochs}_{epoch}.pth'
             torch.save(model.state_dict(),os.path.join(model_path,model_name))
             model.train()
             
@@ -139,13 +140,44 @@ def evaluate(model,DataLoader,device,max_sequence,batch_size,vocab_path,data_dir
             Y = Y.to(torch.device(device=device))
         with torch.no_grad():
             accuracy = model(X,Y,mode='validation')
-            accuracy_list.append(accuracy)
+            accuracy_list.append(accuracy.item())
 
     acc = sum(accuracy_list) / len(accuracy_list)
-    print(acc)
+    print(f'accuracy: {acc:.2f}')
     sys.stdout.flush()
 
     return acc
+
+
+def load_model(model,device,multi_gpu):
+    '''
+    description: multi_gpu or single gpu
+    params:
+        @model{torch.nn.module}: defaut ANMT;
+        @device: cuda or cpu
+        @multi_gpu: more than one gpu or not;
+    return:
+        model
+    '''  
+    if device == 'cuda':
+        if multi_gpu and torch.cuda.device_count() > 1:
+            # use multi gpu training
+            print("Let's use", torch.cuda.device_count(), "GPUs!")
+            torch.distributed.init_process_group(backend="nccl")
+            local_rank = torch.distributed.get_rank()
+            torch.cuda.set_device(local_rank)
+            device = torch.device("cuda", local_rank)
+            model.to(device)
+            model = torch.nn.parallel.DistributedDataParallel(model,device_ids=[local_rank],output_device=local_rank)
+        else:
+            device = torch.device("cuda")
+            model.to(device)
+    else:
+        device = torch.device("cpu")
+        model.to(device)
+
+    return model
+
 
 def main():
     # train parameters
@@ -187,22 +219,16 @@ def main():
 
     # construct the model  
     model = ANMT(height, width, feature_size, embed_size, hidden_size, attention_size, vocab,device=device)
-    # print(list(model.parameters()))
 
-    if device == 'cuda':
-        if multi_gpu and torch.cuda.device_count() > 1:
-            # use multi gpu training
-            print("Let's use", torch.cuda.device_count(), "GPUs!")
-            torch.distributed.init_process_group(backend="nccl")
-            local_rank = torch.distributed.get_rank()
-            torch.cuda.set_device(local_rank)
-            device = torch.device("cuda", local_rank)
-            model.to(device)
-            model = torch.nn.parallel.DistributedDataParallel(model,device_ids=[local_rank],output_device=local_rank)
-        else:
-            device = torch.device("cuda")
-            model.to(device)
-        
+    model_name = args.model_name
+    if len(model_name) != 0:
+        pretrain_path = os.path.join(model_path,model_name)
+        loaded_dict = torch.load(pretrain_path)
+        model = load_model(model,device,multi_gpu)       
+        model.state_dict = loaded_dict
+    else:
+        model = load_model(model,device,multi_gpu)
+
     #the model save path
     model_path = args.model_path
 
