@@ -112,7 +112,7 @@ def train(model, DataLoader, max_seqence, lr, batch_size, num_epochs, loss, opt,
             pd.DataFrame(acc_list).to_csv('./acc.csv')
 
             model_name = f'recognition_{num_epochs}_{epoch}.pth'
-            torch.save(model.state_dict(),os.path.join(model_path,model_name))
+            torch.save(model.module.state_dict(),os.path.join(model_path,model_name))
             model.train()
             
 def evaluate(model,DataLoader,device,max_sequence,batch_size,vocab_path,data_dir):
@@ -227,9 +227,8 @@ def main():
     model_name = args.model_name
     if model_name != None:
         pretrain_path = os.path.join(model_path,model_name)
-        loaded_dict = torch.load(pretrain_path)
-        model = load_model(model,device,multi_gpu)       
-        model.state_dict = loaded_dict
+        model.load_state_dict(torch.load(pretrain_path))
+        model = load_model(model,device,multi_gpu)      
         print('load success!')
     else:
         model = load_model(model,device,multi_gpu)
