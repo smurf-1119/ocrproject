@@ -51,9 +51,7 @@ def collate_fn(batch):
     
     return [images, torch.cat(labels, dim=0)]
 
-
-
-def getDataLoader(mode,batch_size,max_sequence, vocab_path='./dict.txt',data_dir='./AEC_recognition'):
+def getDataLoader(mode,batch_size,max_sequence, vocab_path='./dict.txt',data_dir='./AEC_recognition',val_mode=None):
     """"
     descriptions:generate the dataloader for the following operations
     params:
@@ -70,8 +68,37 @@ def getDataLoader(mode,batch_size,max_sequence, vocab_path='./dict.txt',data_dir
         "validation":'./AEC_recognition/validation/labels.json'
     """
     dataset = recognitionDataset(mode,224,max_sequence, vocab_path,data_dir)
-    if mode == 'test':
-        iter = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers= 4 if platform.system() == "linux" else 0, collate_fn=collate_fn,sampler=DistributedSampler(dataset))
+    if mode == 'validation':
+        if val_mode == 'bleu':
+            iter = DataLoader(dataset, batch_size=1, shuffle=False, num_workers= 4 if platform.system() == "linux" else 0, collate_fn=collate_fn)
+        elif val_mode == 'accuracy':
+            iter = DataLoader(dataset,batch_size=batch_size,num_workers= 4 if platform.system() == "linux" else 0,collate_fn=collate_fn)
+    else:
+        iter = DataLoader(dataset,batch_size=batch_size,num_workers= 4 if platform.system() == "linux" else 0,collate_fn=collate_fn)
+    return iter
+
+def getDataLoader_multigpu(mode,batch_size,max_sequence, vocab_path='./dict.txt',data_dir='./AEC_recognition',val_mode=None):
+    """"
+    descriptions:generate the dataloader for the following operations
+    params:
+    @mode{str}:train,validation or test
+    @batch_size{int}:the variable for the dataset
+    @max_sequence{int}: make sure that the label is in a appropirate length
+
+    @vocab_path{str}: './dict.txt'
+    @img_path{str}
+        "train":'./AEC_recognition/train/img'
+        "validation":'./AEC_recognition/validation/img'
+    @label_path{str}
+        "train":'./AEC_recognition/train/labels.json'
+        "validation":'./AEC_recognition/validation/labels.json'
+    """
+    dataset = recognitionDataset(mode,224,max_sequence, vocab_path,data_dir)
+    if mode == 'validation':
+        if val_mode == 'bleu':
+            iter = DataLoader(dataset, batch_size=1, shuffle=False, num_workers= 4 if platform.system() == "linux" else 0, collate_fn=collate_fn,sampler=DistributedSampler(dataset))
+        elif val_mode == 'accuracy':
+            iter = DataLoader(dataset,batch_size=batch_size,num_workers= 4 if platform.system() == "linux" else 0,collate_fn=collate_fn,sampler=DistributedSampler(dataset))
     else:
         iter = DataLoader(dataset,batch_size=batch_size,num_workers= 4 if platform.system() == "linux" else 0,collate_fn=collate_fn,sampler=DistributedSampler(dataset))
     return iter

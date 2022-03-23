@@ -1,19 +1,29 @@
-from turtle import forward
+from tkinter.messagebox import NO
 import torch
 from torch import nn
 from attention import *
 from context_gate import context_gate
 
 class Decoder(nn.Module):
-    def __init__(self, vocab_size, embed_size, hidden_size, attention_size, num_layers, drop_prob=0):
+    def __init__(self, vocab_size, embed_size, en_hidden_size, de_hidden_size, attention_size, num_layers, drop_prob=0):
         super(Decoder, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embed_size)
-        self.context_gate = context_gate(embed_size, hidden_size)
-        self.attention = attention_model(2*hidden_size, attention_size)
+        self.context_gate = context_gate(embed_size, en_hidden_size, de_hidden_size)
+        self.attention = attention_model(en_hidden_size + de_hidden_size, attention_size)
         # LSTM的输入包含attention输出的c和上一次, 所以尺寸是 hidden_size*2
-        self.lstm = nn.LSTM(hidden_size + embed_size, hidden_size, 
+        self.lstm = nn.LSTM(en_hidden_size + embed_size, de_hidden_size, 
                           num_layers=num_layers, dropout=drop_prob)
-        self.out = nn.Linear(hidden_size, vocab_size)
+        self.out = nn.Linear(de_hidden_size, vocab_size)
+        self.en_hidden_size = en_hidden_size
+        self.de_hidden_size = de_hidden_size
+        self.num_layers = num_layers
+        # transforms hidden size
+        if en_hidden_size != de_hidden_size:
+            self.enc2dec_state = nn.Conv1d(en_hidden_size, de_hidden_size, kernel_size=1)
+            self.enc2dec_cell = nn.Conv1d(en_hidden_size, de_hidden_size, kernel_size=1)
+        else:
+            self.W_enc2dec_state = None
+            self.W_enc2dec_cell = None
     
     def forward(self, cur_input, state, enc_states, attention_mask):
         """
@@ -40,5 +50,13 @@ class Decoder(nn.Module):
         
     def begin_state(self, enc_state):
         # 直接将编码器最终时间步的隐藏状态作为解码器的初始隐藏状态
+        if self.en_hidden_size != self.de_hidden_size:
+            dec_state = self.enc2dec_state(enc_state[0].permute(1,2,0))
+            dec_state = dec_state.permute(2,0,1).contiguous() #后续需要用view
+            dec_cell = self.enc2dec_cell(enc_state[1].permute(1,2,0))
+            dec_cell = dec_cell.permute(2,0,1).contiguous()
+        
+            enc_state = (dec_state, dec_cell)
+
         return enc_state
         

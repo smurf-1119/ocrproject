@@ -2,26 +2,25 @@
 recognition model
 '''
 
-from numpy import indices
 from utils.data_utilis import process_label, build_vocab
 from Encoder import Encoder
 from Decoder import Decoder
-from resnet50 import resnet50
+from resnet50_pre import resnet50
 import torch
 from torch import nn
 
 class ANMT(nn.Module):
-    def __init__(self, height: int, width: int, input_channel: int, embed_size: int, hidden_size: list, attention_size: int, vocab, num_layers=3, drop_prob=0, non_linear=torch.nn.Tanh(), device='cuda') -> None:
+    def __init__(self, height: int, width: int, input_channel: int, embed_size: int, en_hidden_size: int, de_hidden_size, attention_size: int, vocab,max_seq=None,num_layers=3, drop_prob=0, non_linear=torch.nn.Tanh(), device='cuda') -> None:
         super(ANMT, self).__init__()
         self.vocab_size = len(vocab)
         self.vocab = vocab
         self.backbone = resnet50()
         self.en_seq_len = height * width #the lenth of encoder states
-        self.Encoder = Encoder(height, width, input_channel, hidden_size, num_layers, non_linear)
-        self.Decoder = Decoder(self.vocab_size, embed_size, hidden_size, attention_size, num_layers, drop_prob)
+        self.Encoder = Encoder(height, width, input_channel, en_hidden_size, num_layers, non_linear)
+        self.Decoder = Decoder(self.vocab_size, embed_size, en_hidden_size, de_hidden_size, attention_size, num_layers, drop_prob)
         self.device = torch.device(device) 
-    
-    def forward(self, x: torch.Tensor, Y: torch.Tensor, mode='train', loss=None):
+        self.max_seq = max_seq
+    def forward(self, x: torch.Tensor, Y=None, mode='train', loss=None):
         PAD, BOS, EOS = '<pad>', '<bos>', '<eos>'
         batch_size = x.shape[0]
 
@@ -66,19 +65,34 @@ class ANMT(nn.Module):
             for y in Y.permute(1,0):
                 dec_output, dec_state = self.Decoder(dec_input, dec_state, enc_output, attention_mask)
                 pred,index = torch.max(dec_output,dim=1) #取最大值的位置
-                correct = correct+ (mask*(index==y)).sum()
+                correct = correct+ (mask*(index==y).float()).sum()
                 dec_input = index
                 num_not_pad_tokens +=mask.sum().item()
                 mask = mask * (y != self.vocab[EOS]).float()
+            
             return correct/num_not_pad_tokens
         else:
-            pass
+            predict = []
+            for _ in range(self.max_seq):
+                
+                dec_output,dec_state = self.Decoder(dec_input, dec_state, enc_output, attention_mask)
+                _,index = torch.max(dec_output,dim=1)
+                if int(index.item()) == self.vocab[EOS]:
+                    return predict
+                else:
+                    dec_input = index
+                    predict.append(int(index.item()))
+            return predict
+
+            
                 
 def main():
     # params
-    embed_size = 20
-    hidden_size = 256
-    attention_size = 10
+    embed_size = 128
+    en_hidden_size = 256
+    de_hidden_size = 512
+    attention_size = 128
+    num_layers = 3
     max_seq = 35
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     loss = nn.CrossEntropyLoss(reduction='none')
@@ -92,7 +106,7 @@ def main():
     label = torch.cat((process_label(max_seq, vocab, test_str[0]), process_label(max_seq, vocab, test_str[0])), dim=0)
     
     # construct the model  
-    model = ANMT(7, 7, 2048, embed_size, hidden_size, attention_size, vocab, device=device)
+    model = ANMT(7, 7, 2048, embed_size, en_hidden_size, de_hidden_size, attention_size, vocab, device=device, num_layers=num_layers)
     img = torch.zeros((2,3,224,224))
     img = img.cuda()
     label = label.cuda()

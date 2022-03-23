@@ -5,6 +5,8 @@ help construct the dataeset
 import torch
 import cv2
 import numpy as np
+import math
+import collections
 
 PAD, BOS, EOS = '<pad>', '<bos>', '<eos>'
 
@@ -42,6 +44,16 @@ def build_vocab(dict_name: str):
     vocab = {key:value for value, key in enumerate(dic)}
     return vocab
 
+def build_reverse_vocab(dict_name:str):
+    PAD, BOS, EOS = '<pad>', '<bos>', '<eos>'
+
+    with open(dict_name, encoding='utf-8') as f:
+        dic = f.read().split('\n')
+    dic = [PAD, BOS, EOS] + dic
+
+    reversed_vocab = {value:key for value, key in enumerate(dic)}
+    return reversed_vocab
+
 def letterbox_image(img, inp_dim:int):
     '''resize image with unchanged aspect ratio using padding'''
     img_w, img_h = img.shape[1], img.shape[0]
@@ -70,3 +82,17 @@ def adjustLr(optimizer):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
     return optimizer
+
+def bleu(pred_tokens, label_tokens, k):
+    len_pred, len_label = len(pred_tokens), len(label_tokens)
+    score = math.exp(min(0, 1 - len_label / len_pred))
+    for n in range(1, k + 1):
+        num_matches, label_subs = 0, collections.defaultdict(int)
+        for i in range(len_label - n + 1):
+            label_subs[''.join(label_tokens[i: i + n])] += 1
+        for i in range(len_pred - n + 1):
+            if label_subs[''.join(pred_tokens[i: i + n])] > 0:
+                num_matches += 1
+                label_subs[''.join(pred_tokens[i: i + n])] -= 1
+        score *= math.pow(num_matches / (len_pred - n + 1), math.pow(0.5, n))
+    return score

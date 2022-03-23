@@ -35,7 +35,8 @@ def attention_forward(model, enc_states, dec_state, attention_mask):
     '''
 
     # 将解码器隐藏状态广播到和编码器隐藏状态形状相同后进行连结
-    dec_states = dec_state.unsqueeze(dim=0).expand_as(enc_states)
+    # dec_states = dec_state.unsqueeze(dim=0).expand_as(enc_states)
+    dec_states = dec_state.expand(enc_states.shape[0], enc_states.shape[1], -1)
     enc_and_dec_states = torch.cat((enc_states, dec_states), dim=2)
     e = model(enc_and_dec_states)  # 形状为(时间步数, 批量大小, 1)
     alpha = F.softmax(e, dim=0)  # 在时间步维度做softmax运算,alpha:(seq_len,batch,1) 

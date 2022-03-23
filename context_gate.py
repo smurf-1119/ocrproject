@@ -5,16 +5,16 @@ import torch
 from torch import nn
 
 class context_gate(nn.Module):
-    def __init__(self, embed_size: int, hidden_size: int) -> None:
+    def __init__(self, embed_size: int, en_hidden_size: int, de_hidden_size: int) -> None:
         '''
         params:
             @embed_size{int}
             @hidden_size{int}
         '''
         super(context_gate, self).__init__() 
-        self.Ws = nn.parameter.Parameter(torch.empty(hidden_size, hidden_size))
-        self.Wy = nn.parameter.Parameter(torch.empty(embed_size, hidden_size))
-        self.Wc = nn.parameter.Parameter(torch.empty(hidden_size, hidden_size))
+        self.Ws = nn.parameter.Parameter(torch.empty(de_hidden_size, en_hidden_size))
+        self.Wy = nn.parameter.Parameter(torch.empty(embed_size, en_hidden_size))
+        self.Wc = nn.parameter.Parameter(torch.empty(en_hidden_size, en_hidden_size))
 
         self.initialize_weights()
     
